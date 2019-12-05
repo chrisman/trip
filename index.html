@@ -1,0 +1,132 @@
+<hmtl>
+<head>
+  <title>🚶‍♀️ trip</title>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+html, body {
+  font-family: sans-serif;
+  line-height: 1.2;
+  background-color: #eeeeee;
+  color: #111111;
+}
+button {
+  width: 100%;
+  padding: 1em;
+  background: darkslateblue;
+  color: aliceblue;
+  font-size: 2em;
+  border: 1px solid black;
+  border-radius: 5px;
+  margin: 1em 0;
+}
+  </style>
+</head>
+<body>
+  <h1>Trip 🚶‍♀️</h1>
+  <p>hey johnny this page will ask for permission to access your location. You must answer YES in order for any of this to work.</p>
+  <h2>Check in ✅</h2>
+  <div id="status"></div>
+  <button>Check in</button>
+  <div id="locations">
+    <h2>All Locations 📌</h2>
+  </div>
+</body>
+  <script>
+
+const locations = [
+  {
+    name: 'skookum',
+    lat: 39.747234794926435,
+    long: -104.98986546274716,
+  },
+  {
+    name: 'bluebird',
+    lat: 39.7403701,
+    long: -104.9483774,
+  },
+  {
+    name: 'union station',
+    lat: 39.7532116,
+    long: -105.0001926,
+  },
+  {
+    name: 'chipotle',
+    lat: 39.7452946,
+    long: -104.9917759,
+  },
+]
+
+const range = 100
+
+// https://www.geodatasource.com/developers/javascript
+const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
+  const { sin, cos, acos, PI: pi } = Math
+  const rad = x => pi * x/180
+  const [ radlat1, radlat2, radtheta ] = [lat1, lat2, (lon1 - lon2)].map(rad)
+  let dist = sin(radlat1) * sin(radlat2) + cos(radlat1) * cos(radlat2) * cos(radtheta)
+  dist = (dist > 1) ? 1 : dist
+  dist = acos(dist)
+  dist = dist * 180/pi
+  dist = dist * 60 * 1.1515 * 5280
+  return dist
+}
+
+let canCheckIn = false
+
+const geo = {
+  success({ coords: { latitude: lat, longitude: long } }) {
+    dom.status.innerHTML = `Your location: ${lat}, ${long}`
+
+    const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([lat, long], [lt, lng]))
+    const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
+    const nearestLocation  = locations[distances.indexOf(shortestDistance)]
+    canCheckIn = shortestDistance < range
+
+    dom.status.innerHTML += `<br>The nearest location is ${nearestLocation.name}`
+    dom.status.innerHTML += `<br>You are ${shortestDistance} feet away`
+    dom.status.innerHTML += `<br>You must be within ${range} feet to check in`
+    dom.status.innerHTML += `<br>You are ${canCheckIn ? 'not' : ''} close enough to check in`
+      
+  },
+  error() {
+    console.error('Geolocation unavailable') 
+    dom.status.innerHTML = `Geolocation unavailable`
+    dom.status.innerHTML += `<br>Try <a href="#" onclick="locate()">clicking here</a>`
+    dom.status.innerHTML += `<br>If that doesn't work try reloading the page`
+  },
+  options: {
+    enableHighAccuracy: true, 
+    maximumAge: 30000, 
+    timeout: 27000,
+  },
+}
+
+const dom = {
+  button: document.querySelector('button'),
+  locations: document.querySelector('#locations'),
+  status: document.querySelector('#status'),
+}
+
+const locate = () => {
+  if (!navigator.geolocation) {
+    window.alert('This app requires geolocation services')
+  } else {
+    dom.status.textContent = 'Locating...'
+    const id = navigator.geolocation.watchPosition(geo.success, geo.error, geo.options);
+  }
+}
+
+const checkin = () => {
+  window.alert(canCheckIn ? 'SUCCESS! 🎉' : 'Too far 😭')
+}
+
+dom.button.addEventListener('click', checkin)
+locations.forEach(location => {
+  dom.locations.innerHTML += `<li>${location.name}: ${location.lat}, ${location.long}</li>`
+})
+locate();
+
+  </script>
+</html>
