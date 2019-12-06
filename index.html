@@ -39,8 +39,8 @@ button {
 const locations = [
   {
     name: 'skookum',
-    lat: 39.747234794926435,
-    long: -104.98986546274716,
+    lat: 39.7472347,
+    long: -104.9898654,
   },
   {
     name: 'bluebird',
@@ -60,6 +60,7 @@ const locations = [
 ]
 
 const consts = {
+  item: 'trip',
   range: 100,
 }
 const state = {
@@ -68,9 +69,22 @@ const state = {
   canCheckIn: false,
 }
 
-const storage = localStorage
+const data = {
+  get() {
+    return parse(localStorage.getItem(consts.item)) || []
+  },
+  add(x) {
+    const checkins = this.get()
+    if(checkins.filter(c => c.name === x.name).length > 0) {
+      return false
+    } else {
+      localStorage.setItem(consts.item, stringify(this.get().concat(x)))
+      return true
+    }
+  },
+}
+
 const { parse, stringify } = JSON
-const ITEM = 'trip'
 
 // https://www.geodatasource.com/developers/javascript
 const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
@@ -90,14 +104,13 @@ const geo = {
     state.lat  = lat
     state.long = long
 
-    dom.status.innerHTML = `Your location: ${state.lat}, ${state.long}`
-
     const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([state.lat, state.long], [lt, lng]))
     const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
     const nearestLocation  = locations[distances.indexOf(shortestDistance)]
 
     state.canCheckIn = shortestDistance < consts.range
 
+    dom.status.innerHTML = `Your location: ${state.lat}, ${state.long}`
     dom.status.innerHTML += `<br>The nearest location is ${nearestLocation.name}`
     dom.status.innerHTML += `<br>You are ${shortestDistance} feet away`
     dom.status.innerHTML += `<br>You must be within ${consts.range} feet to check in`
@@ -121,7 +134,12 @@ const dom = {
   button: document.querySelector('button'),
   locations: document.querySelector('#locations'),
   status: document.querySelector('#status'),
-  checkins: document.querySelector('#checkins'),
+  checkins: {
+    selector: document.querySelector('#checkins'),
+    update() {
+      dom.checkins.selector.innerHTML = `Total checks in: ${data.get().length}/${locations.length}`
+    }, 
+  }
 }
 
 const locate = () => {
@@ -135,14 +153,20 @@ const locate = () => {
 
 const checkin = () => {
   const success = 'SUCCESS! 🎉'
-  const failure = 'Too far 😭'
+  const failure = 'Too far, or already checked in'
   if (state.canCheckIn) {
     const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([state.lat, state.long], [lt, lng]))
     const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
     const nearestLocation  = locations[distances.indexOf(shortestDistance)]
 
-    const checkins = storage.getItem(ITEM) || []
-    storage.setItem(ITEM, stringify(checkins.concat(nearestLocation)))
+    // TODO/FIXME: this is gross and side-effect-y 
+    // also this needs more robust error reporting
+    // i.e. is it a distance failure or a duplicate failure?
+    if(data.add(nearestLocation)) {
+      dom.checkins.update()
+    } else {
+      state.canCheckIn = false
+    }
   }
   window.alert(state.canCheckIn ? success : failure)
 }
@@ -151,7 +175,7 @@ dom.button.addEventListener('click', checkin)
 locations.forEach(location => {
   dom.locations.innerHTML += `<li>${location.name}: ${location.lat}, ${location.long}</li>`
 })
-checkins.innerHTML = `Total checks in: ${storage.getItem(ITEM) && parse(storage.getItem(ITEM)).length || 0}/${locations.length}`
+dom.checkins.update()
 locate();
 
   </script>
