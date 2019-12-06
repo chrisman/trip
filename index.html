@@ -37,6 +37,7 @@ button {
   <script>
 (async () => {
 
+// all locations are loaded from a static JSON file hosted on github
 const res = await fetch('https://raw.githubusercontent.com/chrisman/trip/master/locations.json')
 const locations = await res.json()
 
@@ -50,6 +51,7 @@ const state = {
   canCheckIn: false,
 }
 
+// localstorage data layer
 const data = {
   get() {
     return parse(localStorage.getItem(consts.item)) || []
@@ -67,7 +69,7 @@ const data = {
 
 const { parse, stringify } = JSON
 
-// https://www.geodatasource.com/developers/javascript
+// pretty much copypasted from https://www.geodatasource.com/developers/javascript
 const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
   const { sin, cos, acos, PI: pi } = Math
   const rad = x => pi * x/180
@@ -80,6 +82,8 @@ const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
   return dist
 }
 
+// this object contains the three parameters to be passed to `navigator.geolocation.watchPosition`:
+// a `success` callback, an `error` callback, and an `options` object
 const geo = {
   success({ coords: { latitude: lat, longitude: long } }) {
     state.lat  = lat
@@ -111,6 +115,7 @@ const geo = {
   },
 }
 
+// query selectors, and update functions for elements that are updated from various places
 const dom = {
   button: document.querySelector('button'),
   locations: document.querySelector('#locations'),
@@ -129,6 +134,7 @@ const dom = {
   }
 }
 
+// this violates the "Only request geolocation information in response to a user gesture" rule, but
 const locate = () => {
   if (!navigator.geolocation) {
     window.alert('This app requires geolocation services')
@@ -138,6 +144,7 @@ const locate = () => {
   }
 }
 
+// TODO please this whole function is stupid
 const checkin = () => {
   const success = 'SUCCESS! 🎉'
   const failure = 'Too far, or already checked in'
@@ -158,12 +165,16 @@ const checkin = () => {
   window.alert(state.canCheckIn ? success : failure)
 }
 
-dom.button.addEventListener('click', checkin)
-locations.forEach(location => {
-  dom.locations.innerHTML += `<li>${location.name}: ${location.lat}, ${location.long}</li>`
-})
-dom.checkins.update()
-locate();
+// kick things off
+const init = () => {
+  dom.button.addEventListener('click', checkin)
+  locations.forEach(location => {
+    dom.locations.innerHTML += `<li>${location.name}: ${location.lat}, ${location.long}</li>`
+  })
+  dom.checkins.update()
+  locate();
+}
+init()
 
 })()
   </script>
