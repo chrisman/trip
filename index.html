@@ -27,6 +27,7 @@ button {
   <h1>Trip 🚶‍♀️</h1>
   <p>hey johnny this page will ask for permission to access your location. You must answer YES in order for any of this to work.</p>
   <h2>Check in ✅</h2>
+  <p id="checkins"></p>
   <div id="status"></div>
   <button>Check in</button>
   <div id="locations">
@@ -58,7 +59,18 @@ const locations = [
   },
 ]
 
-const range = 100
+const consts = {
+  range: 100,
+}
+const state = {
+  lat: 0,
+  long: 0,
+  canCheckIn: false,
+}
+
+const storage = localStorage
+const { parse, stringify } = JSON
+const ITEM = 'trip'
 
 // https://www.geodatasource.com/developers/javascript
 const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
@@ -68,26 +80,28 @@ const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
   let dist = sin(radlat1) * sin(radlat2) + cos(radlat1) * cos(radlat2) * cos(radtheta)
   dist = (dist > 1) ? 1 : dist
   dist = acos(dist)
-  dist = dist * 180/pi
-  dist = dist * 60 * 1.1515 * 5280
+  dist = dist * 180/pi // i don't know what any of these numbers are
+  dist = dist * 60 * 1.1515 * 5280 // lol
   return dist
 }
 
-let canCheckIn = false
-
 const geo = {
   success({ coords: { latitude: lat, longitude: long } }) {
-    dom.status.innerHTML = `Your location: ${lat}, ${long}`
+    state.lat  = lat
+    state.long = long
 
-    const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([lat, long], [lt, lng]))
+    dom.status.innerHTML = `Your location: ${state.lat}, ${state.long}`
+
+    const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([state.lat, state.long], [lt, lng]))
     const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
     const nearestLocation  = locations[distances.indexOf(shortestDistance)]
-    canCheckIn = shortestDistance < range
+
+    state.canCheckIn = shortestDistance < consts.range
 
     dom.status.innerHTML += `<br>The nearest location is ${nearestLocation.name}`
     dom.status.innerHTML += `<br>You are ${shortestDistance} feet away`
-    dom.status.innerHTML += `<br>You must be within ${range} feet to check in`
-    dom.status.innerHTML += `<br>You are ${canCheckIn ? 'not' : ''} close enough to check in`
+    dom.status.innerHTML += `<br>You must be within ${consts.range} feet to check in`
+    dom.status.innerHTML += `<br>You are ${state.canCheckIn ? '' : 'not'} close enough to check in`
       
   },
   error() {
@@ -107,6 +121,7 @@ const dom = {
   button: document.querySelector('button'),
   locations: document.querySelector('#locations'),
   status: document.querySelector('#status'),
+  checkins: document.querySelector('#checkins'),
 }
 
 const locate = () => {
@@ -119,13 +134,24 @@ const locate = () => {
 }
 
 const checkin = () => {
-  window.alert(canCheckIn ? 'SUCCESS! 🎉' : 'Too far 😭')
+  const success = 'SUCCESS! 🎉'
+  const failure = 'Too far 😭'
+  if (state.canCheckIn) {
+    const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([state.lat, state.long], [lt, lng]))
+    const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
+    const nearestLocation  = locations[distances.indexOf(shortestDistance)]
+
+    const checkins = storage.getItem(ITEM) || []
+    storage.setItem(ITEM, stringify(checkins.concat(nearestLocation)))
+  }
+  window.alert(state.canCheckIn ? success : failure)
 }
 
 dom.button.addEventListener('click', checkin)
 locations.forEach(location => {
   dom.locations.innerHTML += `<li>${location.name}: ${location.lat}, ${location.long}</li>`
 })
+checkins.innerHTML = `Total checks in: ${storage.getItem(ITEM) && parse(storage.getItem(ITEM)).length || 0}/${locations.length}`
 locate();
 
   </script>
