@@ -112,7 +112,7 @@ const geo = {
 
     dom.status.innerHTML = `Your location: ${state.lat}, ${state.long}`
     dom.status.innerHTML += `<br>The nearest location is ${nearestLocation.name}`
-    dom.status.innerHTML += `<br>You are ${shortestDistance} feet away`
+    dom.status.innerHTML += `<br>You are ${Math.floor(shortestDistance)} feet away`
     dom.status.innerHTML += `<br>You must be within ${consts.range} feet to check in`
     dom.status.innerHTML += `<br>You are ${state.canCheckIn ? '' : 'not'} close enough to check in`
       
@@ -137,7 +137,13 @@ const dom = {
   checkins: {
     selector: document.querySelector('#checkins'),
     update() {
-      dom.checkins.selector.innerHTML = `Total checks in: ${data.get().length}/${locations.length}`
+      const len = data.get().length
+      dom.checkins.selector.innerHTML = `Total checks in: ${len}/${locations.length}`
+      if(len === locations.length) {
+        dom.checkins.selector.innerHTML += `<marquee><h1>🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉</h1></marquee>`
+        dom.checkins.selector.innerHTML += `<h1>YOU WIN! <a href="mailto:chris.brown+crawl@skookum.com?subject=crawl%20complete">Send this email to complete your submission</a></h1>`
+        dom.checkins.selector.innerHTML += `<marquee><h1>🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉</h1></marquee>`
+      }
     }, 
   }
 }
