@@ -35,29 +35,10 @@ button {
   </div>
 </body>
   <script>
+(async () => {
 
-const locations = [
-  {
-    name: 'skookum',
-    lat: 39.7472347,
-    long: -104.9898654,
-  },
-  {
-    name: 'bluebird',
-    lat: 39.7403701,
-    long: -104.9483774,
-  },
-  {
-    name: 'union station',
-    lat: 39.7532116,
-    long: -105.0001926,
-  },
-  {
-    name: 'chipotle',
-    lat: 39.7452946,
-    long: -104.9917759,
-  },
-]
+const res = await fetch('https://raw.githubusercontent.com/chrisman/trip/master/locations.json')
+const locations = await res.json()
 
 const consts = {
   item: 'trip',
@@ -184,5 +165,6 @@ locations.forEach(location => {
 dom.checkins.update()
 locate();
 
+})()
   </script>
 </html>
