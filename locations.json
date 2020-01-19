@@ -5,9 +5,24 @@
     "long": -104.9898654
   },
   {
-    "name": "ironworks",
-    "lat": 39.7398758,
-    "long": -105.0166191
+    "name": "chipotle",
+    "lat": 39.7452946,
+    "long": -104.9917759
+  },
+  {
+    "name": "target",
+    "lat": 39.7451504,
+    "long": -104.9918869
+  },
+  {
+    "name": "clocktower",
+    "lat": 39.7480656,
+    "long": -104.9957314
+  },
+  {
+    "name": "whole foods",
+    "lat": 39.7547404,
+    "long": -105.0015860
   },
   {
     "name": "union station",

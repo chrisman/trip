@@ -11,8 +11,7 @@ html, body {
   background-color: #eeeeee;
   color: #111111;
 }
-button {
-  width: 100%;
+details {
   padding: 1em;
   background: darkslateblue;
   color: aliceblue;
@@ -21,18 +20,36 @@ button {
   border-radius: 5px;
   margin: 1em 0;
 }
+details button {
+  font-size: 1.2em;
+  border-radius: 5px;
+  padding: 1em;
+  width: 100%;
+  background-color: aliceblue;
+}
+footer button {
+  background-color: #eeeeee;
+  border: none;
+  color: #ddd;
+}
   </style>
 </head>
 <body>
   <h1>Trip 🚶‍♀️</h1>
-  <p>hey johnny this page will ask for permission to access your location. You must answer YES in order for any of this to work.</p>
-  <h2>Check in ✅</h2>
+  <h2>How to</h2>
+  <ol>
+    <li>First turn on location services: <button class="allowAccess">allow location access</button></li>
+    <li>Have a nice trip!</li>
+  </ol>
+  <h2>Checkins</h2>
   <p id="checkins"></p>
-  <div id="status"></div>
-  <button>Check in</button>
   <div id="locations">
     <h2>All Locations 📌</h2>
   </div>
+  <footer>
+    <button class="cleardata">clear data</button>
+    <button class="clearwatch">clear watch</button>
+  </footer>
 </body>
   <script>
 (async () => {
@@ -42,32 +59,32 @@ const res = await fetch('https://raw.githubusercontent.com/chrisman/trip/master/
 const locations = await res.json()
 
 const consts = {
-  item: 'trip',
-  range: 100,
+  localstoragekey: 'trip',
+  range: 500,
 }
 const state = {
   lat: 0,
   long: 0,
-  canCheckIn: false,
+  watchid: undefined,
 }
+const { parse, stringify } = JSON
 
 // localstorage data layer
 const data = {
   get() {
-    return parse(localStorage.getItem(consts.item)) || []
+    return parse(localStorage.getItem(consts.localstoragekey)) || []
   },
   add(x) {
-    const checkins = this.get()
-    if(checkins.filter(c => c.name === x.name).length > 0) {
-      return false
-    } else {
-      localStorage.setItem(consts.item, stringify(this.get().concat(x)))
-      return true
+    const alreadyExists = this.get().filter(c => c.name === x.name).length > 0
+    if(!alreadyExists) {
+      localStorage.setItem(consts.localstoragekey, stringify(this.get().concat(x)))
     }
+    return !alreadyExists
   },
+  clear() {
+    localStorage.clear()
+  }
 }
-
-const { parse, stringify } = JSON
 
 // pretty much copypasted from https://www.geodatasource.com/developers/javascript
 const distanceInFeet = ([lat1, lon1], [lat2, lon2]) => {
@@ -88,38 +105,22 @@ const geo = {
   success({ coords: { latitude: lat, longitude: long } }) {
     state.lat  = lat
     state.long = long
-
-    const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([state.lat, state.long], [lt, lng]))
-    const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
-    const nearestLocation  = locations[distances.indexOf(shortestDistance)]
-
-    state.canCheckIn = shortestDistance < consts.range
-
-    dom.status.innerHTML = `Your location: ${state.lat}, ${state.long}`
-    dom.status.innerHTML += `<br>The nearest location is ${nearestLocation.name}`
-    dom.status.innerHTML += `<br>You are ${Math.floor(shortestDistance)} feet away`
-    dom.status.innerHTML += `<br>You must be within ${consts.range} feet to check in`
-    dom.status.innerHTML += `<br>You are ${state.canCheckIn ? '' : 'not'} close enough to check in`
-      
   },
-  error() {
-    console.error('Geolocation unavailable') 
-    dom.status.innerHTML = `Geolocation unavailable`
-    dom.status.innerHTML += `<br>Try <a href="#" onclick="locate()">clicking here</a>`
-    dom.status.innerHTML += `<br>If that doesn't work try reloading the page`
+
+  error(err) {
+    console.error(err)
   },
+
   options: {
     enableHighAccuracy: true, 
-    maximumAge: 30000, 
+    maximumAge: 1000, 
     timeout: 27000,
   },
 }
 
 // query selectors, and update functions for elements that are updated from various places
 const dom = {
-  button: document.querySelector('button'),
   locations: document.querySelector('#locations'),
-  status: document.querySelector('#status'),
   checkins: {
     selector: document.querySelector('#checkins'),
     update() {
@@ -134,45 +135,59 @@ const dom = {
   }
 }
 
-// this violates the "Only request geolocation information in response to a user gesture" rule, but
-const locate = () => {
+const getLocation = () => {
   if (!navigator.geolocation) {
     window.alert('This app requires geolocation services')
   } else {
-    dom.status.textContent = 'Locating...'
-    const id = navigator.geolocation.watchPosition(geo.success, geo.error, geo.options);
+    state.watchid = navigator.geolocation.watchPosition(geo.success, geo.error, geo.options);
   }
 }
 
-// TODO please this whole function is stupid
-const checkin = () => {
-  const success = 'SUCCESS! 🎉'
-  const failure = 'Too far, or already checked in'
-  if (state.canCheckIn) {
-    const distances        = locations.map(({ lat: lt, long: lng }) => distanceInFeet([state.lat, state.long], [lt, lng]))
-    const shortestDistance = distances.reduce((a, b) => a < b ? a : b)
-    const nearestLocation  = locations[distances.indexOf(shortestDistance)]
+const checkin = (name) => {
+  const location = locations.find(l => l.name === name)
 
-    // TODO/FIXME: this is gross and side-effect-y 
-    // also this needs more robust error reporting
-    // i.e. is it a distance failure or a duplicate failure?
-    if(data.add(nearestLocation)) {
-      dom.checkins.update()
+  const distance = distanceInFeet(
+    [state.lat, state.long],
+    [location.lat, location.long]
+  )
+
+  const success = (distance <= consts.range)
+  if (success) {
+    if (data.add(location)) {
+      window.alert('Checked In!')
     } else {
-      state.canCheckIn = false
+      window.alert('Already checked in')
     }
+  } else {
+    window.alert('Too far')
   }
-  window.alert(state.canCheckIn ? success : failure)
 }
 
 // kick things off
 const init = () => {
-  dom.button.addEventListener('click', checkin)
   locations.forEach(location => {
-    dom.locations.innerHTML += `<li>${location.name}: ${location.lat}, ${location.long}</li>`
+    dom.locations.innerHTML += `<details><summary>${location.name}</summary><p>Located at: ${location.lat}, ${location.long}</p><button id="${location.name}" class="location">Check In</button></details>`
   })
+
+  document.querySelectorAll('button.location').forEach(button => {
+    button.addEventListener('click', event => {
+      checkin(event.target.attributes.id.value)
+    });
+  })
+
+  document.querySelector('button.allowAccess').addEventListener('click', getLocation)
+
+  document.querySelector('button.cleardata').addEventListener('click', event => data.clear());
+
+  document.querySelector('button.clearwatch').addEventListener('click', event => {
+    if (state.watchid) {
+      navigator.geolocation.clearWatch(state.watchid)
+      state.watchid = undefined
+    }
+
+  });
+
   dom.checkins.update()
-  locate();
 }
 init()
 
